@@ -107,6 +107,7 @@ void append(Queue* member, Queue* destination, int k)
 }
 void finish_F()
 {
+    printf("priority at finish: %s\n",current->C_priority);
     switch (current->C_priority[0])
     {
     case 'H':
@@ -426,7 +427,6 @@ void alrm(int unused)
                 temp=temp->next;
         }
     }
-    printf("wdqw%ld\n",current->expireT);
     if(clock() > current->expireT)
     {
         switch (current->C_priority[0])
@@ -450,8 +450,8 @@ void alrm(int unused)
         current->counter = clock();
         swapcontext(&current->Tcontext, &dispatch_context);
     }
-    printf("name:%s\n", current->name);
-    setcontext(&current->Tcontext);
+    printf("name at alrm:%s\n", current->name);
+    setcontext(&dispatch_context);
 }
 void Dispatcher()
 {
@@ -500,6 +500,7 @@ void parse(char *path)
         OS2021_ThreadCreate(name,entry_func,priority,cancel_mode[0]-'0');
         fscanf(file,"%c",&comma);
     }
+    fclose(file);
 }
 void printQs()
 {
@@ -525,9 +526,8 @@ void StartSchedulingSimulation()
     /*Create Context*/
     CreateContext(&dispatch_context, &timer_context, &Dispatcher);
     CreateContext(&finish, &timer_context, &finish_F);
-    makecontext(&timer_context, &alrm, 1);
+    CreateContext(&timer_context, NULL, &alrm);
     //while(1);
     setcontext(&dispatch_context);
     while(1);
-    //while(1);
 }
