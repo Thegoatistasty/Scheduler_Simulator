@@ -39,7 +39,7 @@ void traverse(Queue* ptr)
 {
     while(ptr!=NULL)
     {
-        printf("*\t\t%-4d\t%-16s%-8s%-12s%-13s%-15lf%-9lf*\n", ptr->tid,ptr->name,ptr->status,ptr->B_priority, ptr->C_priority, (double)ptr->Q_time/CLOCKS_PER_SEC, (double)ptr->W_time/CLOCKS_PER_SEC);
+        printf("*\t\t%-4d\t%-16s%-8s%-12s%-13s%-15lf%-9lf*\n", ptr->tid,ptr->name,ptr->status,ptr->B_priority, ptr->C_priority, (double)ptr->Q_time/CLOCKS_PER_SEC*100, (double)ptr->W_time/CLOCKS_PER_SEC*100);
         ptr=ptr->next;
     }
 }
@@ -50,15 +50,17 @@ void extract(Queue* member)
         switch(member->C_priority[0])
         {
         case 'H':
-            Q_H = NULL;
+            Q_H = member->next;
             break;
         case 'M':
-            Q_M = NULL;
+            Q_M = member->next;
             break;
         case 'L':
-            Q_L = NULL;
+            Q_L = member->next;
             break;
         }
+        if(member->next!=NULL)
+            member->next->previous=NULL;
     }
     else
     {
@@ -107,7 +109,6 @@ void append(Queue* member, Queue* destination, int k)
 }
 void finish_F()
 {
-    printf("priority at finish: %s\n",current->C_priority);
     switch (current->C_priority[0])
     {
     case 'H':
@@ -117,6 +118,7 @@ void finish_F()
         break;
     case 'M':
         current->C_priority[0]='H';
+        printf("move %s from M to H\n", current->name);
         extract(current);
         append(current, Q_H,1);
         break;
@@ -259,7 +261,7 @@ void OS2021_ThreadWaitEvent(int event_id)
     append(current, waitingQ,4);
     strcpy(current->status, "WAITING");
     printf("%s wants to wait for event %d\n", current->name, event_id);
-    return;
+    setcontext(&dispatch_context);
 }
 
 void OS2021_ThreadSetEvent(int event_id)
@@ -329,8 +331,11 @@ void OS2021_DeallocateThreadResource()
 
 void OS2021_TestCancel()
 {
-    extract(current);
-    append(current, cancelQ,5);
+    if(!strcmp(current->status,"TERMINATED"))
+    {
+        extract(current);
+        append(current, cancelQ,5);
+    }
 }
 
 void CreateContext(ucontext_t *context, ucontext_t *next_context, void *func)
@@ -394,7 +399,6 @@ void counttime()
 void alrm(int unused)
 {
     //getcontext(&timer_context);
-    printf("enter alr\n");
     counttime();
     if(time_WQ!=NULL)
     {
@@ -450,32 +454,29 @@ void alrm(int unused)
         current->counter = clock();
         swapcontext(&current->Tcontext, &dispatch_context);
     }
-    printf("name at alrm:%s\n", current->name);
     setcontext(&dispatch_context);
 }
+void printQs();
 void Dispatcher()
 {
-
     if(Q_H!=NULL)
     {
-        printf("w1\n");
         current = Q_H;
         current->expireT = clock()+CLOCKS_PER_SEC*0.1;
-        swapcontext(&dispatch_context,&current->Tcontext);
+        setcontext(&current->Tcontext);
     }
     else if(Q_M!=NULL)
     {
-        printf("w2\n");
         current = Q_M;
         current->expireT = clock()+CLOCKS_PER_SEC*0.2;
-        swapcontext(&dispatch_context, &current->Tcontext);
+        setcontext(&current->Tcontext);
     }
     else
     {
-        printf("w3\n");
         current = Q_L;
         current->expireT = clock()+CLOCKS_PER_SEC*0.3;
-        swapcontext(&dispatch_context,&current->Tcontext);
+        setcontext(&current->Tcontext);
+        //swapcontext(&dispatch_context,&current->Tcontext);
     }
 
 }
@@ -514,13 +515,14 @@ void printQs()
 }
 void StartSchedulingSimulation()
 {
-    OS2021_ThreadCreate("Reclaimer","OS2021_DeallocateThreadResource","H",1);
+    OS2021_ThreadCreate("Reclaimer","OS2021_DeallocateThreadResource","L",1);
     char *path = "./init_threads.json";
     parse(path);
     /*Set Timer*/
     Signaltimer.it_interval.tv_usec = 10000;
     Signaltimer.it_interval.tv_sec = 0;
     ResetTimer();
+    //setcontext(&Q_M->Tcontext);
     signal(SIGTSTP, printQs);
     signal(SIGALRM, alrm);
     /*Create Context*/
@@ -529,5 +531,6 @@ void StartSchedulingSimulation()
     CreateContext(&timer_context, NULL, &alrm);
     //while(1);
     setcontext(&dispatch_context);
+    //setcontext(&Q_M->Tcontext);
     while(1);
 }
