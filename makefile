@@ -1,4 +1,3 @@
-
 GIT_HOOKS := .git/hooks/applied
 CC := gcc
 CFLAGS += -std=gnu99 -g -Wall
