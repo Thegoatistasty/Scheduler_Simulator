@@ -16,7 +16,7 @@ To initialize a new thread(modified in init_threads.json), you must assign
 * entry function(defined in function_libary.c)
 * priority(H, M or L)
 * cancel mode(1 for deferred cancellation type, 0 for asynchronous cancellation type)  
-### Format
+##### Format
     {   
             "name" : "f1",  
 		"entry function" : "Function1",  
