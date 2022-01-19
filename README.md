@@ -9,7 +9,7 @@
 ## Execute
     ./simulator
 ## See thread info
-    ^Z
+    Ctrl+Z
 ## Input file format
 To initialize a new thread(modified in init_threads.json), you must assign 
 * name
